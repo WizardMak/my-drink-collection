@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>The Global Pour</title>
+    <title>My Global Pour</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -25,7 +25,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
 
-        /* Sidebar Header and Filter */
         .sidebar-header { margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px; }
         .sidebar-header h2 { color: #5d4037; margin: 0; font-size: 22px; }
         
@@ -34,7 +33,6 @@
             border: 1px solid #d7ccc8; background: #fff; cursor: pointer; font-weight: 600; color: #5d4037;
         }
 
-        /* Perfectly Centered Header */
         .header-container {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
             background: rgba(255, 255, 255, 0.95); padding: 10px 40px; border-radius: 50px;
@@ -43,10 +41,11 @@
         }
         .header-container h1 { margin: 0; font-size: 22px; pointer-events: auto; }
 
-        /* Tasting Card UI */
-        .tasting-card { padding: 10px; min-width: 220px; text-align: center; }
-        .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; letter-spacing: 1px; }
-        .tasting-card h4 { margin: 5px 0 10px 0; color: #8d6e63; font-weight: normal; border-bottom: 1px solid #d7ccc8; padding-bottom: 5px; }
+        /* Updated Tasting Card Layout */
+        .tasting-card { padding: 10px; min-width: 240px; text-align: center; }
+        .tasting-card h2 { margin: 0; font-size: 16px; color: #5d4037; text-transform: uppercase; letter-spacing: 0.5px; }
+        .one-liner { font-style: italic; font-size: 13px; color: #7f8c8d; margin: 8px 0; line-height: 1.3; }
+        .region-country { font-size: 14px; color: #8d6e63; font-weight: bold; margin-bottom: 10px; }
         .tasting-card p { margin: 10px 0; font-size: 14px; line-height: 1.5; color: #333; text-align: left; }
         
         .status-badge { font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; display: inline-block; }
@@ -72,6 +71,9 @@
                 <option value="Whiskey">Whiskey</option>
                 <option value="Gin">Gin</option>
                 <option value="Rum">Rum</option>
+                <option value="Tequila">Tequila</option>
+                <option value="Vodka">Vodka</option>
+                <option value="Brandy">Brandy</option>
             </select>
         </div>
         <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px;">Loading...</div>
@@ -79,34 +81,42 @@
     </div>
 
     <div class="header-container">
-        <h1>🌎 The Global Pour 🥃</h1>
+        <h1>🌎 My Global Pour 🥃</h1>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // Category Definitions
+        const definitions = {
+            "Vodka": "A versatile, often neutral spirit made from grains or potatoes.",
+            "Gin": "A neutral spirit flavored with juniper berries and botanical ingredients.",
+            "Rum": "Distilled from sugarcane byproducts like molasses or sugarcane juice.",
+            "Tequila": "A Mexican spirit distilled specifically from the blue agave plant.",
+            "Whiskey": "Distilled from fermented grain mash (barley, corn, rye, or wheat).",
+            "Brandy": "A spirit distilled from fermented fruit juice, most commonly grapes."
+        };
+
         function toggleSidebar() {
             var sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('open');
             if (!sidebar.classList.contains('open')) {
-                map.flyTo([20, 0], 2);
+                map.flyTo([20, 0], 2.8);
                 map.closePopup();
             }
         }
 
         var map = L.map('map', { 
-            zoomControl: false, minZoom: 2,
+            zoomControl: false, minZoom: 2, zoomSnap: 0.1,
             maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0, worldCopyJump: false
-        }).setView([20, 0], 2);
+        }).setView([20, 0], 2.8);
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             noWrap: true, bounds: [[-90, -180], [90, 180]], attribution: 'Esri'
         }).addTo(map);
 
-        // Fix map gaps on initial load
         window.onload = function() {
             setTimeout(function(){ map.invalidateSize(); }, 500);
         };
@@ -156,7 +166,21 @@
                         var statusText = String(item.Status || "").trim();
                         var statusClass = (statusText.toLowerCase().includes("bar") || statusText.toLowerCase() === "mybar") ? "in-my-bar" : "my-wishlist";
                         
-                        var popupContent = `<div class="tasting-card"><h2>${item.Name}</h2><h4>${item.Country}</h4><div class="status-badge ${statusClass}">${statusText}</div><p>${item.Description}</p></div>`;
+                        // Fetch the one-liner based on category
+                        var categoryDef = definitions[item.Category] || "A premium selection from my collection.";
+
+                        // Updated Card Structure
+                        var popupContent = `
+                            <div class="tasting-card">
+                                <h2>${item.Category} - ${item.Name}</h2>
+                                <div class="one-liner">${categoryDef}</div>
+                                <div class="region-country">📍 Region - ${item.Country}</div>
+                                <hr style="border:0; border-top:1px solid #d7ccc8;">
+                                <div class="status-badge ${statusClass}">${statusText}</div>
+                                <p>${item.Description}</p>
+                            </div>
+                        `;
+
                         var marker = L.marker([jLat, jLng], { icon: getPinIcon(item.Status) }).bindPopup(popupContent);
                         
                         var btn = document.createElement('button');
