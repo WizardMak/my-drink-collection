@@ -16,7 +16,6 @@
         .header-container h1 { margin: 0; font-size: 20px; color: #5d4037; }
         #categoryFilter { margin-top: 8px; padding: 5px; border-radius: 5px; border: 1px solid #d7ccc8; }
 
-        /* Tasting Card Styling */
         .tasting-card { padding: 10px; min-width: 200px; text-align: center; }
         .tasting-card img { width: 100%; max-height: 150px; object-fit: contain; border-radius: 5px; margin-bottom: 10px; }
         .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; }
@@ -24,13 +23,14 @@
         .in-stock { background: #c8e6c9; color: #2e7d32; }
         .wishlist { background: #ffecb3; color: #ff8f00; }
 
-        /* Image Pin Styling */
+        .custom-pin { background: none; border: none; }
         .custom-image-pin {
             border: 2px solid white;
             border-radius: 50%;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             background: white;
             object-fit: cover;
+            display: block;
         }
     </style>
 </head>
@@ -59,10 +59,8 @@
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
         var allMarkers = [];
 
-        // Logic for Pin Icon
         function createIcon(item) {
-            // If there's an image URL, use it as the icon
-            if (item.ImageURL && item.ImageURL.trim() !== "") {
+            if (item.ImageURL && item.ImageURL.length > 10) {
                 return L.divIcon({
                     className: 'custom-pin',
                     html: `<img src="${item.ImageURL}" class="custom-image-pin" style="width:40px; height:40px;">`,
@@ -72,8 +70,9 @@
                 });
             }
             
-            // Fallback to Colored Pins
-            var pinColor = item.Status === "In Stock" ? "green" : "orange";
+            var statusStr = String(item.Status).trim().toLowerCase();
+            var pinColor = statusStr === "in stock" ? "green" : "orange";
+            
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${pinColor}.png`,
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -96,21 +95,30 @@
             download: true, header: true,
             complete: function(results) {
                 results.data.forEach(function(item) {
-                    if(item.Name && item.Lat && item.Long) {
-                        var statusClass = item.Status === "In Stock" ? "in-stock" : "wishlist";
+                    var rawLat = parseFloat(item.Lat);
+                    var rawLng = parseFloat(item.Long);
+
+                    if(item.Name && !isNaN(rawLat) && !isNaN(rawLng)) {
+                        
+                        // JITTER FIX: Adds a tiny random offset so overlapping pins are visible
+                        var lat = rawLat + (Math.random() - 0.5) * 0.05;
+                        var lng = rawLng + (Math.random() - 0.5) * 0.05;
+
+                        var statusStr = String(item.Status).trim();
+                        var statusClass = statusStr.toLowerCase() === "in stock" ? "in-stock" : "wishlist";
                         
                         var popupContent = `
                             <div class="tasting-card">
                                 ${item.ImageURL ? `<img src="${item.ImageURL}">` : ''}
                                 <h2>${item.Name}</h2>
                                 <h4>${item.Country}</h4>
-                                <span class="status-badge ${statusClass}">${item.Status || 'Unknown'}</span>
+                                <span class="status-badge ${statusClass}">${statusStr || 'Unknown'}</span>
                                 <p><strong>Category:</strong> ${item.Category}</p>
                                 <p>${item.Description}</p>
                             </div>
                         `;
 
-                        var marker = L.marker([item.Lat, item.Long], {icon: createIcon(item)})
+                        var marker = L.marker([lat, lng], {icon: createIcon(item)})
                                       .bindPopup(popupContent);
                         
                         marker.addTo(map);
@@ -122,4 +130,3 @@
     </script>
 </body>
 </html>
-
