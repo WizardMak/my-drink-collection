@@ -5,36 +5,51 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #map { height: 100vh; width: 100%; background: #f4f1ea; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; }
+        #map { height: 100vh; flex-grow: 1; background: #aad3df; }
         
-        .header-container {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); padding: 10px 25px; border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; min-width: 300px;
+        /* Sidebar for Zoom Buttons */
+        #sidebar {
+            width: 250px;
+            height: 100vh;
+            background: #fdfbf7;
+            border-right: 1px solid #d7ccc8;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 1001;
         }
-        .header-container h1 { margin: 0; font-size: 20px; color: #5d4037; }
-        #categoryFilter { margin-top: 8px; padding: 5px; border-radius: 5px; border: 1px solid #d7ccc8; }
+        #sidebar h2 { color: #5d4037; font-size: 18px; border-bottom: 2px solid #5d4037; padding-bottom: 10px; }
+        .zoom-btn {
+            display: block; width: 100%; padding: 10px; margin: 10px 0;
+            background: #fff; border: 1px solid #d7ccc8; border-radius: 8px;
+            text-align: left; cursor: pointer; transition: 0.3s; color: #5d4037; font-weight: bold;
+        }
+        .zoom-btn:hover { background: #efebe9; transform: translateX(5px); }
 
-        .tasting-card { padding: 10px; min-width: 200px; text-align: center; }
-        .tasting-card img { width: 100%; max-height: 150px; object-fit: contain; border-radius: 5px; margin-bottom: 10px; }
-        .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; }
-        .status-badge { font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; display: inline-block; margin-bottom: 10px; }
-        .in-stock { background: #c8e6c9; color: #2e7d32; }
-        .wishlist { background: #ffecb3; color: #ff8f00; }
+        .header-container {
+            position: absolute; top: 10px; left: 60%; transform: translateX(-50%); z-index: 1000;
+            background: rgba(255, 255, 255, 0.95); padding: 10px 25px; border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center;
+        }
+        
+        .tasting-card { padding: 10px; min-width: 220px; text-align: center; }
+        .tasting-card img { width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px; margin-bottom: 10px; }
+        .status-badge { font-size: 10px; font-weight: bold; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; display: inline-block; margin-bottom: 10px; }
+        .in-stock { background: #2e7d32; color: white; }
+        .wishlist { background: #ef6c00; color: white; }
 
         .custom-pin { background: none; border: none; }
-        .custom-image-pin {
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            background: white;
-            object-fit: cover;
-            display: block;
-        }
+        .custom-image-pin { border: 3px solid white; border-radius: 50%; box-shadow: 0 3px 8px rgba(0,0,0,0.4); background: white; object-fit: cover; display: block; }
     </style>
 </head>
 <body>
+
+    <div id="sidebar">
+        <h2>⭐ Top Favorites</h2>
+        <div id="zoom-controls">
+            </div>
+    </div>
 
     <div class="header-container">
         <h1>🥃 My Love for Drinks 🍷</h1>
@@ -54,32 +69,26 @@
             minZoom: 2, maxBounds: [[-90, -180], [90, 180]], maxBoundsViscosity: 1.0
         }).setView([20, 0], 2);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { noWrap: true }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            noWrap: true, attribution: 'Tiles &copy; Esri'
+        }).addTo(map);
 
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
         var allMarkers = [];
 
         function createIcon(item) {
-            if (item.ImageURL && item.ImageURL.length > 10) {
+            if (item.ImageURL && item.ImageURL.trim().length > 10) {
                 return L.divIcon({
                     className: 'custom-pin',
-                    html: `<img src="${item.ImageURL}" class="custom-image-pin" style="width:40px; height:40px;">`,
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 40],
-                    popupAnchor: [0, -40]
+                    html: `<img src="${item.ImageURL.trim()}" class="custom-image-pin" style="width:45px; height:45px;">`,
+                    iconSize: [45, 45], iconAnchor: [22, 45], popupAnchor: [0, -45]
                 });
             }
-            
-            var statusStr = String(item.Status).trim().toLowerCase();
+            var statusStr = String(item.Status || "").toLowerCase().trim();
             var pinColor = statusStr === "in stock" ? "green" : "orange";
-            
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${pinColor}.png`,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
+                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
             });
         }
 
@@ -94,35 +103,40 @@
         Papa.parse(spreadsheetURL, {
             download: true, header: true,
             complete: function(results) {
+                var controls = document.getElementById('zoom-controls');
                 results.data.forEach(function(item) {
-                    var rawLat = parseFloat(item.Lat);
-                    var rawLng = parseFloat(item.Long);
+                    var lat = parseFloat(item.Lat);
+                    var lng = parseFloat(item.Long);
 
-                    if(item.Name && !isNaN(rawLat) && !isNaN(rawLng)) {
-                        
-                        // JITTER FIX: Adds a tiny random offset so overlapping pins are visible
-                        var lat = rawLat + (Math.random() - 0.5) * 0.05;
-                        var lng = rawLng + (Math.random() - 0.5) * 0.05;
+                    if(item.Name && !isNaN(lat) && !isNaN(lng)) {
+                        // Apply Jitter
+                        var jLat = lat + (Math.random() - 0.5) * 0.08;
+                        var jLng = lng + (Math.random() - 0.5) * 0.08;
 
-                        var statusStr = String(item.Status).trim();
-                        var statusClass = statusStr.toLowerCase() === "in stock" ? "in-stock" : "wishlist";
-                        
+                        var statusClass = String(item.Status).toLowerCase().trim() === "in stock" ? "in-stock" : "wishlist";
                         var popupContent = `
                             <div class="tasting-card">
-                                ${item.ImageURL ? `<img src="${item.ImageURL}">` : ''}
+                                ${item.ImageURL.trim() ? `<img src="${item.ImageURL.trim()}">` : ''}
                                 <h2>${item.Name}</h2>
                                 <h4>${item.Country}</h4>
-                                <span class="status-badge ${statusClass}">${statusStr || 'Unknown'}</span>
-                                <p><strong>Category:</strong> ${item.Category}</p>
+                                <span class="status-badge ${statusClass}">${item.Status || 'Unknown'}</span>
                                 <p>${item.Description}</p>
                             </div>
                         `;
 
-                        var marker = L.marker([lat, lng], {icon: createIcon(item)})
-                                      .bindPopup(popupContent);
-                        
+                        var marker = L.marker([jLat, jLng], {icon: createIcon(item)}).bindPopup(popupContent);
                         marker.addTo(map);
                         allMarkers.push({ marker: marker, category: item.Category });
+
+                        // Add a button to the sidebar for each drink
+                        var btn = document.createElement('button');
+                        btn.className = 'zoom-btn';
+                        btn.innerHTML = `📍 ${item.Name}`;
+                        btn.onclick = function() {
+                            map.flyTo([lat, lng], 8); // Zooms into the country/region
+                            marker.openPopup();
+                        };
+                        controls.appendChild(btn);
                     }
                 });
             }
