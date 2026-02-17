@@ -1,47 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My World Drink Collection</title>
+    <title>Global Drink Collection</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        #map { height: 600px; width: 100%; border-radius: 15px; }
-        body { font-family: sans-serif; background: #f4f1ea; padding: 20px; }
-        h1 { color: #5d4037; text-align: center; }
+        #map { height: 100vh; width: 100%; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        .tasting-card { padding: 10px; min-width: 200px; }
+        .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; }
+        .tasting-card h4 { margin: 0 0 10px 0; color: #8d6e63; font-weight: normal; border-bottom: 1px solid #d7ccc8; padding-bottom: 5px; }
+        .tasting-card p { margin: 5px 0; font-size: 14px; line-height: 1.4; color: #333; }
+        .status-badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; }
+        .in-stock { background: #c8e6c9; color: #2e7d32; }
+        .wishlist { background: #ffecb3; color: #ff8f00; }
     </style>
 </head>
 <body>
 
-    <h1>Globe Trotter's Bar 🥃</h1>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        // Initialize the map focused on the center of the world
         var map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Add a nice "antique" style map layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
 
-        // Data: This is where you add your drinks!
-        var drinks = [
-            { 
-                name: "Sake", 
-                country: "Japan", 
-                coords: [36.2, 138.2], 
-                desc: "A traditional rice wine. My favorite is the Junmai Daiginjo from Kyoto." 
-            },
-            { 
-                name: "Tequila", 
-                country: "Mexico", 
-                coords: [23.6, -102.5], 
-                desc: "100% Blue Agave. This bottle was brought back from Jalisco." 
+        // Helper to change pin color
+        function getIcon(status) {
+            var color = status === "In Stock" ? "green" : "orange";
+            return new L.Icon({
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+        }
+
+        Papa.parse(spreadsheetURL, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                results.data.forEach(function(item) {
+                    if(item.Name && item.Name !== "[Drink Name]" && item.Lat && item.Long) {
+                        
+                        var statusClass = item.Status === "In Stock" ? "in-stock" : "wishlist";
+                        
+                        var popupContent = `
+                            <div class="tasting-card">
+                                <h2>${item.Name}</h2>
+                                <h4>${item.Country}</h4>
+                                <span class="status-badge ${statusClass}">${item.Status || 'Unknown'}</span>
+                                <p>${item.Description}</p>
+                            </div>
+                        `;
+
+                        L.marker([item.Lat, item.Long], {icon: getIcon(item.Status)}).addTo(map)
+                            .bindPopup(popupContent);
+                    }
+                });
             }
-        ];
-
-        // Place pins on the map
-        drinks.forEach(function(item) {
-            L.marker(item.coords).addTo(map)
-                .bindPopup("<b>" + item.name + " (" + item.country + ")</b><br>" + item.desc);
         });
     </script>
 </body>
