@@ -2,65 +2,88 @@
 <html>
 <head>
     <title>My Global Pour | Collection</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥃</text></svg>">
-
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: #001f3f; overflow: hidden; }
         
         #sidebar {
             position: absolute; left: -320px; top: 0; width: 300px; height: 100vh; 
             background: #fdfbf7; border-right: 1px solid #d7ccc8; overflow-y: auto; 
-            padding: 20px; box-sizing: border-box; z-index: 2000;
+            padding: 20px; box-sizing: border-box; z-index: 2500;
             transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 5px 0 15px rgba(0,0,0,0.5);
         }
         #sidebar.open { left: 0; }
         
-        #map { height: 100vh; width: 100vw; background: #001f3f; }
+        #map { height: 100vh; width: 100vw; background: #001f3f; position: relative; }
         
         #toggle-btn {
-            position: absolute; top: 15px; left: 15px; z-index: 2500;
+            position: absolute; top: 15px; left: 15px; z-index: 3000;
             background: #5d4037; color: white; border: none; padding: 12px 20px;
             border-radius: 50px; cursor: pointer; font-weight: bold; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            font-size: 14px;
+        }
+
+        /* MOBILE HEADER: Enhanced Shadow for Visibility */
+        .header-container {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;
+            text-align: center; pointer-events: none; width: 90%;
+            white-space: nowrap; transition: opacity 0.4s ease;
+        }
+        #map:has(.leaflet-popup) ~ .header-container { opacity: 0; }
+        
+        .header-container h1 { 
+            margin: 0; font-size: 22px; color: white; 
+            text-shadow: 0px 0px 10px rgba(0,0,0,0.9), 2px 2px 4px rgba(0,0,0,1); 
+        }
+
+        /* Adjust font size for very small screens */
+        @media (max-width: 480px) {
+            .header-container h1 { font-size: 18px; }
+            #toggle-btn { padding: 10px 15px; font-size: 12px; }
         }
 
         .sidebar-header { margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px; }
-        .sidebar-header h2 { color: #5d4037; margin: 0; font-size: 22px; }
+        .filter-label { font-size: 11px; font-weight: bold; color: #8d6e63; text-transform: uppercase; margin-bottom: 5px; display: block; }
         
-        #categoryFilter { 
-            width: 100%; padding: 10px; margin-top: 15px; border-radius: 8px; 
+        .custom-select { 
+            width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; 
             border: 1px solid #d7ccc8; background: #fff; cursor: pointer; font-weight: 600; color: #5d4037;
         }
 
-        .header-container {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); padding: 10px 40px; border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; pointer-events: none;
-            white-space: nowrap;
+        .emoji-marker {
+            background: white; border-radius: 50%;
+            text-align: center; line-height: 28px; font-size: 18px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            border: 3px solid #ccc;
         }
-        .header-container h1 { margin: 0; font-size: 22px; pointer-events: auto; }
+        .border-in-bar { border-color: #2e7d32 !important; }
+        .border-not-in-bar { border-color: #d32f2f !important; }
 
-        .tasting-card { padding: 10px; min-width: 250px; text-align: center; }
-        .tasting-card h2 { margin: 0; font-size: 20px; color: #5d4037; text-transform: uppercase; font-weight: 800; }
-        .sub-header { font-size: 13px; color: #8d6e63; font-weight: 600; margin: 4px 0 10px 0; line-height: 1.4; }
-        .one-liner-text { font-style: italic; font-size: 12px; color: #7f8c8d; font-weight: normal; }
-        .region-country { font-size: 14px; color: #333; font-weight: 500; margin: 8px 0; }
-        .tasting-card p { margin: 12px 0; font-size: 14px; line-height: 1.5; color: #444; text-align: left; border-top: 1px solid #eee; padding-top: 10px; }
+        .tasting-card { padding: 5px; min-width: 220px; text-align: center; }
+        .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; font-weight: 800; }
+        .sub-header { font-size: 12px; color: #8d6e63; font-weight: 600; margin: 4px 0 10px 0; }
+        .one-liner-text { font-style: italic; font-size: 11px; color: #7f8c8d; font-weight: normal; }
+        .region-country { font-size: 13px; color: #333; font-weight: 500; margin: 8px 0; }
+        .tasting-card p { margin: 10px 0; font-size: 13px; line-height: 1.4; color: #444; text-align: left; border-top: 1px solid #eee; padding-top: 8px; }
         
-        .status-badge { font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; display: inline-block; }
+        .status-badge { font-size: 10px; font-weight: bold; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; display: inline-block; }
         .in-my-bar { background: #2e7d32; color: white; }
-        .my-wishlist { background: #d32f2f; color: white; }
+        .not-in-bar { background: #d32f2f; color: white; }
 
         .zoom-btn {
             display: block; width: 100%; padding: 12px; margin: 8px 0;
             background: #fff; border: 1px solid #d7ccc8; border-radius: 8px;
             text-align: left; cursor: pointer; color: #5d4037; font-weight: bold; font-size: 13px;
+            border-left: 5px solid #ccc;
         }
+        .list-in-bar { border-left-color: #2e7d32; }
+        .list-not-in-bar { border-left-color: #d32f2f; }
     </style>
 </head>
 <body>
@@ -69,9 +92,11 @@
 
     <div id="sidebar">
         <div class="sidebar-header">
-            <h2>🍾 My Collection</h2>
-            <select id="categoryFilter" onchange="filterAll()">
-                <option value="All">All Categories</option>
+            <h2 style="color: #5d4037; margin-bottom: 20px;">🍾 My Collection</h2>
+            
+            <span class="filter-label">Spirit Category</span>
+            <select id="categoryFilter" class="custom-select" onchange="filterAll()">
+                <option value="All">All Drinks Collection</option>
                 <option value="Whiskey">Whiskey</option>
                 <option value="Gin">Gin</option>
                 <option value="Rum">Rum</option>
@@ -79,16 +104,22 @@
                 <option value="Vodka">Vodka</option>
                 <option value="Brandy">Brandy</option>
             </select>
+
+            <span class="filter-label">Availability</span>
+            <select id="statusFilter" class="custom-select" onchange="filterAll()">
+                <option value="All">Show All Status</option>
+                <option value="In My Bar">In My Bar</option>
+                <option value="Not in My Bar">Not in My Bar</option>
+            </select>
         </div>
-        <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px;">Loading...</div>
+        <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px; font-weight: 600;"></div>
         <div id="zoom-controls"></div>
     </div>
 
+    <div id="map"></div>
     <div class="header-container">
         <h1>🗺️ My Global Pour 🥃</h1>
     </div>
-
-    <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -101,50 +132,50 @@
             "Brandy": { emoji: "🍇", text: "A spirit distilled from fermented fruit juice, most commonly grapes." }
         };
 
-        function toggleSidebar() {
-            var sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
-            if (!sidebar.classList.contains('open')) {
-                map.flyTo([20, 0], 2.8);
-                map.closePopup();
-            }
-        }
+        var allData = [];
+        
+        // Use a more zoomed-out view for mobile by default
+        var initialZoom = window.innerWidth < 600 ? 1.5 : 2.8;
+        var initialCenter = [20, 0];
 
         var map = L.map('map', { 
-            zoomControl: false, minZoom: 2, zoomSnap: 0.1,
+            zoomControl: false, minZoom: 1, zoomSnap: 0.1,
             maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0, worldCopyJump: false
-        }).setView([20, 0], 2.8);
+        }).setView(initialCenter, initialZoom);
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             noWrap: true, bounds: [[-90, -180], [90, 180]], attribution: 'Esri'
         }).addTo(map);
 
-        window.onload = function() {
-            setTimeout(function(){ map.invalidateSize(); }, 500);
-        };
-
-        var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
-        var allData = [];
-
-        function getPinIcon(status) {
-            var s = String(status || "").toLowerCase().trim();
-            var color = (s.includes("bar") || s === "mybar") ? "green" : "red";
-            return new L.Icon({
-                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-            });
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+            if (!sidebar.classList.contains('open')) {
+                map.flyTo(initialCenter, initialZoom);
+                map.closePopup();
+            }
         }
 
+        // Fix for mobile layout shifts
+        window.addEventListener('resize', function() {
+            map.invalidateSize();
+        });
+
+        var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
+
         function filterAll() {
-            var selected = document.getElementById('categoryFilter').value;
+            var catSelected = document.getElementById('categoryFilter').value;
+            var statSelected = document.getElementById('statusFilter').value;
             var controls = document.getElementById('zoom-controls');
             controls.innerHTML = "";
             var visibleCount = 0;
 
             allData.forEach(function(item) {
-                if (selected === "All" || item.category === selected) {
+                var matchesCat = (catSelected === "All" || item.category === catSelected);
+                var matchesStat = (statSelected === "All" || item.statusFull === statSelected);
+
+                if (matchesCat && matchesStat) {
                     map.addLayer(item.marker);
                     controls.appendChild(item.button);
                     visibleCount++;
@@ -152,7 +183,16 @@
                     map.removeLayer(item.marker);
                 }
             });
-            document.getElementById('stats-display').innerHTML = `Showing <b>${visibleCount}</b> unique selections.`;
+
+            let statusText = "";
+            if (catSelected === "All" && statSelected === "All") {
+                statusText = `Showing all <b>${visibleCount}</b> drinks in collection.`;
+            } else {
+                let catLabel = catSelected === "All" ? "drinks" : catSelected;
+                let statLabel = statSelected === "All" ? "" : ` (${statSelected})`;
+                statusText = `Showing <b>${visibleCount}</b> ${catLabel}${statLabel}.`;
+            }
+            document.getElementById('stats-display').innerHTML = statusText;
         }
 
         Papa.parse(spreadsheetURL, {
@@ -163,13 +203,22 @@
                     var lng = parseFloat(item.Long);
 
                     if(item.Name && !isNaN(lat) && !isNaN(lng)) {
-                        var jLat = lat + (Math.random() - 0.5) * 0.15;
-                        var jLng = lng + (Math.random() - 0.5) * 0.15;
+                        var rawStatus = String(item.Status || "").trim().toLowerCase();
+                        var isMyBar = (rawStatus.startsWith("in") || rawStatus === "mybar") && !rawStatus.includes("not");
 
-                        var statusText = String(item.Status || "").trim();
-                        var statusClass = (statusText.toLowerCase().includes("bar") || statusText.toLowerCase() === "mybar") ? "in-my-bar" : "my-wishlist";
-                        
+                        var displayStatus = isMyBar ? "In My Bar" : "Not in My Bar";
+                        var statusClass = isMyBar ? "in-my-bar" : "not-in-bar";
+                        var borderClass = isMyBar ? "border-in-bar" : "border-not-in-bar";
+                        var listClass = isMyBar ? "list-in-bar" : "list-not-in-bar";
+
                         var catInfo = spiritData[item.Category] || { emoji: "🍷", text: "A premium selection." };
+
+                        var emojiIcon = L.divIcon({
+                            className: `emoji-marker ${borderClass}`,
+                            html: catInfo.emoji,
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
+                        });
 
                         var popupContent = `
                             <div class="tasting-card">
@@ -178,17 +227,24 @@
                                     ${catInfo.emoji} ${item.Category} - <span class="one-liner-text">${catInfo.text}</span>
                                 </div>
                                 <div class="region-country">📍 Region - ${item.Country}</div>
-                                <div class="status-badge ${statusClass}">${statusText}</div>
+                                <div class="status-badge ${statusClass}">${displayStatus}</div>
                                 <p>${item.Description}</p>
                             </div>
                         `;
 
-                        var marker = L.marker([jLat, jLng], { icon: getPinIcon(item.Status) }).bindPopup(popupContent);
+                        var marker = L.marker([lat, lng], { icon: emojiIcon }).bindPopup(popupContent);
                         var btn = document.createElement('button');
-                        btn.className = 'zoom-btn';
-                        btn.innerHTML = `🍷 ${item.Name}`;
-                        btn.onclick = function() { map.flyTo([lat, lng], 6); marker.openPopup(); };
-                        allData.push({ marker: marker, button: btn, category: item.Category });
+                        btn.className = `zoom-btn ${listClass}`;
+                        btn.innerHTML = `${catInfo.emoji} ${item.Name}`;
+                        btn.onclick = function() { 
+                            // Zoom in closer for mobile (level 5 vs 6)
+                            var zoomLevel = window.innerWidth < 600 ? 5 : 6;
+                            map.flyTo([lat, lng], zoomLevel); 
+                            marker.openPopup(); 
+                            // Close sidebar on mobile after clicking
+                            if(window.innerWidth < 600) toggleSidebar();
+                        };
+                        allData.push({ marker: marker, button: btn, category: item.Category, statusFull: displayStatus });
                     }
                 });
                 filterAll();
