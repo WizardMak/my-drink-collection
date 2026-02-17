@@ -5,15 +5,15 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        /* FIX: Change background color outside of map boundaries */
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: #2c3e50; }
+        /* Deep navy background for areas outside the map bounds */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: #001f3f; }
         
         #sidebar {
             width: 250px; height: 100vh; background: #fdfbf7;
             border-right: 1px solid #d7ccc8; overflow-y: auto; padding: 20px; box-sizing: border-box; z-index: 1001;
         }
         
-        #map { height: 100vh; flex-grow: 1; background: #2c3e50; }
+        #map { height: 100vh; flex-grow: 1; background: #001f3f; }
         
         .header-container {
             position: absolute; top: 10px; left: 55%; transform: translateX(-50%); z-index: 1000;
@@ -31,9 +31,9 @@
         .tasting-card { padding: 5px; min-width: 200px; text-align: center; }
         .status-badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; text-transform: uppercase; }
         
-        /* Updated colors for your new status names */
-        .my-bar { background: #2e7d32; color: white; }
-        .my-wish { background: #ef6c00; color: white; }
+        /* Updated UI colors for the tasting cards */
+        .in-my-bar { background: #2e7d32; color: white; }
+        .my-wishlist { background: #d32f2f; color: white; }
     </style>
 </head>
 <body>
@@ -73,11 +73,14 @@
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
         var allMarkers = [];
 
-        // Updated Icon Logic for MyBar and MyWish
+        // Logic for GREEN (In My Bar) and RED (My Wishlist)
         function getPinIcon(status) {
             var s = String(status || "").toLowerCase().trim();
-            // GREEN for MyBar, ORANGE for MyWish
-            var color = (s === "mybar") ? "green" : "orange";
+            var color = "red"; // Default to red
+            
+            if (s.includes("bar")) {
+                color = "green";
+            }
             
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
@@ -112,7 +115,7 @@
                         var jLng = lng + (Math.random() - 0.5) * 0.15;
 
                         var statusValue = String(item.Status || "").trim();
-                        var statusClass = statusValue.toLowerCase() === "mybar" ? "my-bar" : "my-wish";
+                        var statusClass = statusValue.toLowerCase().includes("bar") ? "in-my-bar" : "my-wishlist";
                         
                         var popupContent = `
                             <div class="tasting-card">
