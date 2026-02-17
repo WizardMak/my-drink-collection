@@ -5,12 +5,15 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; }
+        /* FIX: Change background color outside of map boundaries */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: #2c3e50; }
+        
         #sidebar {
             width: 250px; height: 100vh; background: #fdfbf7;
             border-right: 1px solid #d7ccc8; overflow-y: auto; padding: 20px; box-sizing: border-box; z-index: 1001;
         }
-        #map { height: 100vh; flex-grow: 1; background: #aad3df; }
+        
+        #map { height: 100vh; flex-grow: 1; background: #2c3e50; }
         
         .header-container {
             position: absolute; top: 10px; left: 55%; transform: translateX(-50%); z-index: 1000;
@@ -27,8 +30,10 @@
 
         .tasting-card { padding: 5px; min-width: 200px; text-align: center; }
         .status-badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; text-transform: uppercase; }
-        .in-stock { background: #2e7d32; color: white; }
-        .wishlist { background: #ef6c00; color: white; }
+        
+        /* Updated colors for your new status names */
+        .my-bar { background: #2e7d32; color: white; }
+        .my-wish { background: #ef6c00; color: white; }
     </style>
 </head>
 <body>
@@ -52,7 +57,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // FIX 1: MaxBounds and worldCopyJump: false prevents the "Data not available" repeat
         var map = L.map('map', { 
             minZoom: 2,
             maxBounds: [[-90, -180], [90, 180]],
@@ -61,7 +65,7 @@
         }).setView([20, 0], 2);
         
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            noWrap: true, // Stops the tiles from repeating horizontally
+            noWrap: true,
             bounds: [[-90, -180], [90, 180]],
             attribution: 'Tiles &copy; Esri'
         }).addTo(map);
@@ -69,11 +73,11 @@
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
         var allMarkers = [];
 
-        // FIX 2: Bulletproof Pin Color Logic
+        // Updated Icon Logic for MyBar and MyWish
         function getPinIcon(status) {
             var s = String(status || "").toLowerCase().trim();
-            // This will catch "In Stock", "In stock", "in stock ", etc.
-            var color = (s.includes("in stock")) ? "green" : "orange";
+            // GREEN for MyBar, ORANGE for MyWish
+            var color = (s === "mybar") ? "green" : "orange";
             
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
@@ -107,15 +111,14 @@
                         var jLat = lat + (Math.random() - 0.5) * 0.15;
                         var jLng = lng + (Math.random() - 0.5) * 0.15;
 
-                        var statusText = String(item.Status || "Wishlist").trim();
-                        var isStock = statusText.toLowerCase().includes("in stock");
-                        var statusClass = isStock ? "in-stock" : "wishlist";
+                        var statusValue = String(item.Status || "").trim();
+                        var statusClass = statusValue.toLowerCase() === "mybar" ? "my-bar" : "my-wish";
                         
                         var popupContent = `
                             <div class="tasting-card">
                                 <h3>${item.Name}</h3>
                                 <p><strong>${item.Country}</strong></p>
-                                <p><span class="status-badge ${statusClass}">${statusText}</span></p>
+                                <p><span class="status-badge ${statusClass}">${statusValue}</span></p>
                                 <hr style="border:0; border-top:1px solid #eee;">
                                 <p style="font-size:13px; color:#666;">${item.Description}</p>
                             </div>
