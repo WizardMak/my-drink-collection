@@ -25,22 +25,25 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
 
-        /* Catchy Header inside Sidebar */
+        /* Sidebar Header and Filter */
         .sidebar-header { margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px; }
         .sidebar-header h2 { color: #5d4037; margin: 0; font-size: 22px; }
         
-        /* Category Filter inside Sidebar */
         #categoryFilter { 
             width: 100%; padding: 10px; margin-top: 15px; border-radius: 8px; 
             border: 1px solid #d7ccc8; background: #fff; cursor: pointer; font-weight: 600; color: #5d4037;
         }
 
+        /* Perfectly Centered Header */
         .header-container {
-            position: absolute; top: 15px; left: 55%; transform: translateX(-50%); z-index: 1000;
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
             background: rgba(255, 255, 255, 0.95); padding: 10px 40px; border-radius: 50px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; pointer-events: none;
+            white-space: nowrap;
         }
+        .header-container h1 { margin: 0; font-size: 22px; pointer-events: auto; }
 
+        /* Tasting Card UI */
         .tasting-card { padding: 10px; min-width: 220px; text-align: center; }
         .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; letter-spacing: 1px; }
         .tasting-card h4 { margin: 5px 0 10px 0; color: #8d6e63; font-weight: normal; border-bottom: 1px solid #d7ccc8; padding-bottom: 5px; }
@@ -76,7 +79,7 @@
     </div>
 
     <div class="header-container">
-        <h1 style="margin:0; font-size:22px;">🌎 The Global Pour 🥃</h1>
+        <h1>🌎 The Global Pour 🥃</h1>
     </div>
 
     <div id="map"></div>
@@ -98,9 +101,15 @@
         }).setView([20, 0], 2);
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
+        
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             noWrap: true, bounds: [[-90, -180], [90, 180]], attribution: 'Esri'
         }).addTo(map);
+
+        // Fix map gaps on initial load
+        window.onload = function() {
+            setTimeout(function(){ map.invalidateSize(); }, 500);
+        };
 
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
         var allData = [];
@@ -115,7 +124,6 @@
             });
         }
 
-        // Logic to filter both Map and Sidebar simultaneously
         function filterAll() {
             var selected = document.getElementById('categoryFilter').value;
             var controls = document.getElementById('zoom-controls');
@@ -131,7 +139,7 @@
                     map.removeLayer(item.marker);
                 }
             });
-            document.getElementById('stats-display').innerHTML = `Showing <b>${visibleCount}</b> ${selected === 'All' ? '' : selected} drinks.`;
+            document.getElementById('stats-display').innerHTML = `Showing <b>${visibleCount}</b> unique selections.`;
         }
 
         Papa.parse(spreadsheetURL, {
@@ -159,7 +167,7 @@
                         allData.push({ marker: marker, button: btn, category: item.Category });
                     }
                 });
-                filterAll(); // Run initial display
+                filterAll();
             }
         });
     </script>
