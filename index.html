@@ -1,13 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Global Drink Collection</title>
+    <title>My Love for Drinks</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        #map { height: 100vh; width: 100%; }
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100vh; width: 100%; background: #f4f1ea; }
         
+        /* Floating Header Styling */
+        .header-container {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 25px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 300px;
+        }
+        .header-container h1 { margin: 0; font-size: 20px; color: #5d4037; white-space: nowrap; }
+        
+        /* Filter Styling */
+        #categoryFilter {
+            margin-top: 8px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid #d7ccc8;
+            background: white;
+            cursor: pointer;
+            outline: none;
+        }
+
         .tasting-card { padding: 10px; min-width: 200px; }
         .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; }
         .tasting-card h4 { margin: 0 0 10px 0; color: #8d6e63; font-weight: normal; border-bottom: 1px solid #d7ccc8; padding-bottom: 5px; }
@@ -19,16 +49,34 @@
 </head>
 <body>
 
+    <div class="header-container">
+        <h1>🥃 My Love for Drinks 🍷</h1>
+        <select id="categoryFilter" onchange="filterMarkers()">
+            <option value="All">All Categories</option>
+            <option value="Spirit">Spirits</option>
+            <option value="Wine">Wine</option>
+            <option value="Beer">Beer</option>
+            <option value="Non-Alcoholic">Non-Alcoholic</option>
+        </select>
+    </div>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        var map = L.map('map').setView([20, 0], 2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+        var map = L.map('map', {
+            minZoom: 2,
+            maxBounds: [[-90, -180], [90, 180]],
+            maxBoundsViscosity: 1.0
+        }).setView([20, 0], 2);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            noWrap: true 
+        }).addTo(map);
 
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
+        var allMarkers = [];
 
-        // Helper to change pin color
         function getIcon(status) {
             var color = status === "In Stock" ? "green" : "orange";
             return new L.Icon({
@@ -41,6 +89,17 @@
             });
         }
 
+        function filterMarkers() {
+            var selected = document.getElementById('categoryFilter').value;
+            allMarkers.forEach(function(m) {
+                if (selected === "All" || m.category === selected) {
+                    map.addLayer(m.marker);
+                } else {
+                    map.removeLayer(m.marker);
+                }
+            });
+        }
+
         Papa.parse(spreadsheetURL, {
             download: true,
             header: true,
@@ -48,6 +107,8 @@
                 results.data.forEach(function(item) {
                     if(item.Name && item.Name !== "[Drink Name]" && item.Lat && item.Long) {
                         
+                        var lat = parseFloat(item.Lat) + (Math.random() - 0.5) * 0.5;
+                        var lng = parseFloat(item.Long) + (Math.random() - 0.5) * 0.5;
                         var statusClass = item.Status === "In Stock" ? "in-stock" : "wishlist";
                         
                         var popupContent = `
@@ -55,12 +116,21 @@
                                 <h2>${item.Name}</h2>
                                 <h4>${item.Country}</h4>
                                 <span class="status-badge ${statusClass}">${item.Status || 'Unknown'}</span>
+                                <p><strong>Category:</strong> ${item.Category || 'Other'}</p>
                                 <p>${item.Description}</p>
                             </div>
                         `;
 
-                        L.marker([item.Lat, item.Long], {icon: getIcon(item.Status)}).addTo(map)
-                            .bindPopup(popupContent);
+                        var marker = L.marker([lat, lng], {icon: getIcon(item.Status)})
+                                      .bindPopup(popupContent);
+                        
+                        marker.addTo(map);
+                        
+                        // Store marker and category for filtering
+                        allMarkers.push({
+                            marker: marker,
+                            category: item.Category
+                        });
                     }
                 });
             }
