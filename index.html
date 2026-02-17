@@ -11,7 +11,7 @@
             position: absolute; left: -320px; top: 0; width: 300px; height: 100vh; 
             background: #fdfbf7; border-right: 1px solid #d7ccc8; overflow-y: auto; 
             padding: 20px; box-sizing: border-box; z-index: 2000;
-            transition: left 0.5s ease;
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 5px 0 15px rgba(0,0,0,0.5);
         }
         #sidebar.open { left: 0; }
@@ -19,28 +19,40 @@
         #map { height: 100vh; width: 100vw; background: #001f3f; }
         
         #toggle-btn {
-            position: absolute; top: 15px; left: 15px; z-index: 2501;
+            position: absolute; top: 15px; left: 15px; z-index: 2500;
             background: #5d4037; color: white; border: none; padding: 12px 20px;
             border-radius: 50px; cursor: pointer; font-weight: bold; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+
+        .sidebar-header { margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px; }
+        .sidebar-header h2 { color: #5d4037; margin: 0; font-size: 22px; }
+        
+        #categoryFilter { 
+            width: 100%; padding: 10px; margin-top: 15px; border-radius: 8px; 
+            border: 1px solid #d7ccc8; background: #fff; cursor: pointer; font-weight: 600; color: #5d4037;
         }
 
         .header-container {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
             background: rgba(255, 255, 255, 0.95); padding: 10px 40px; border-radius: 50px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; pointer-events: none;
+            white-space: nowrap;
         }
+        .header-container h1 { margin: 0; font-size: 22px; pointer-events: auto; }
 
+        /* Restructured Tasting Card */
         .tasting-card { padding: 10px; min-width: 250px; text-align: center; }
         .tasting-card h2 { margin: 0; font-size: 20px; color: #5d4037; text-transform: uppercase; font-weight: 800; }
         .category-line { font-size: 13px; color: #8d6e63; font-weight: 600; margin: 5px 0; }
         .one-liner-text { font-style: italic; font-size: 12px; color: #7f8c8d; font-weight: normal; }
         .region-country { font-size: 14px; color: #333; font-weight: 500; margin: 8px 0; }
+        .tasting-card p { margin: 12px 0; font-size: 14px; line-height: 1.5; color: #444; text-align: left; border-top: 1px solid #eee; padding-top: 10px; }
         
         .status-badge { font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; display: inline-block; }
         .in-my-bar { background: #2e7d32; color: white; }
         .my-wishlist { background: #d32f2f; color: white; }
-        
+
         .zoom-btn {
             display: block; width: 100%; padding: 12px; margin: 8px 0;
             background: #fff; border: 1px solid #d7ccc8; border-radius: 8px;
@@ -53,9 +65,9 @@
     <button id="toggle-btn" onclick="toggleSidebar()">☰ MyCollectionList</button>
 
     <div id="sidebar">
-        <div style="margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px;">
-            <h2 style="color: #5d4037; margin: 0;">🍾 My Collection</h2>
-            <select id="categoryFilter" onchange="filterAll()" style="width:100%; padding:10px; margin-top:15px; border-radius:8px;">
+        <div class="sidebar-header">
+            <h2>🍾 My Collection</h2>
+            <select id="categoryFilter" onchange="filterAll()">
                 <option value="All">All Categories</option>
                 <option value="Whiskey">Whiskey</option>
                 <option value="Gin">Gin</option>
@@ -65,19 +77,19 @@
                 <option value="Brandy">Brandy</option>
             </select>
         </div>
-        <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px;">Loading Collection...</div>
+        <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px;">Loading...</div>
         <div id="zoom-controls"></div>
     </div>
 
     <div class="header-container">
-        <h1 style="margin:0; font-size:22px;">🌎 My Global Pour 🥃</h1>
+        <h1>🌎 My Global Pour 🥃</h1>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Data for Card definitions
+        // Definitions + Specific Emojis
         const spiritData = {
             "Vodka": { emoji: "🍸", text: "A versatile, often neutral spirit made from grains or potatoes." },
             "Gin": { emoji: "🌿", text: "A neutral spirit flavored with juniper berries and botanical ingredients." },
@@ -87,84 +99,27 @@
             "Brandy": { emoji: "🍇", text: "A spirit distilled from fermented fruit juice, most commonly grapes." }
         };
 
-        var allData = [];
-        var map = L.map('map', { zoomControl: false, minZoom: 2 }).setView([20, 0], 2);
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+            if (!sidebar.classList.contains('open')) {
+                map.flyTo([20, 0], 2.8);
+                map.closePopup();
+            }
+        }
+
+        var map = L.map('map', { 
+            zoomControl: false, minZoom: 2, zoomSnap: 0.1,
+            maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0, worldCopyJump: false
+        }).setView([20, 0], 2.8);
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             noWrap: true, bounds: [[-90, -180], [90, 180]], attribution: 'Esri'
         }).addTo(map);
 
-        function toggleSidebar() {
-            var sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
-            if (!sidebar.classList.contains('open')) {
-                map.flyTo([20, 0], 2);
-                map.closePopup();
-            }
-        }
+        window.onload = function() {
+            setTimeout(function(){ map.invalidateSize(); }, 500);
+        };
 
-        var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
-
-        function getPinIcon(status) {
-            var s = String(status || "").toLowerCase().trim();
-            var color = (s.includes("bar") || s === "mybar") ? "green" : "red";
-            return new L.Icon({
-                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-            });
-        }
-
-        function filterAll() {
-            var selected = document.getElementById('categoryFilter').value;
-            var controls = document.getElementById('zoom-controls');
-            controls.innerHTML = "";
-            var visibleCount = 0;
-
-            allData.forEach(function(item) {
-                if (selected === "All" || item.category === selected) {
-                    map.addLayer(item.marker);
-                    controls.appendChild(item.button);
-                    visibleCount++;
-                } else {
-                    map.removeLayer(item.marker);
-                }
-            });
-            document.getElementById('stats-display').innerHTML = `Showing <b>${visibleCount}</b> selections.`;
-        }
-
-        Papa.parse(spreadsheetURL, {
-            download: true, header: true,
-            complete: function(results) {
-                results.data.forEach(function(item) {
-                    var lat = parseFloat(item.Lat);
-                    var lng = parseFloat(item.Long);
-                    if(item.Name && !isNaN(lat) && !isNaN(lng)) {
-                        var statusText = String(item.Status || "").trim();
-                        var statusClass = (statusText.toLowerCase().includes("bar") || statusText.toLowerCase() === "mybar") ? "in-my-bar" : "my-wishlist";
-                        var catInfo = spiritData[item.Category] || { emoji: "🍷", text: "A premium selection." };
-
-                        var popupContent = `
-                            <div class="tasting-card">
-                                <h2>${item.Name}</h2>
-                                <div class="category-line">${catInfo.emoji} ${item.Category} - <span class="one-liner-text">${catInfo.text}</span></div>
-                                <div class="region-country">📍 Region - ${item.Country}</div>
-                                <div class="status-badge ${statusClass}">${statusText}</div>
-                                <p style="text-align:left; border-top:1px solid #eee; padding-top:10px;">${item.Description}</p>
-                            </div>`;
-
-                        var marker = L.marker([lat, lng], { icon: getPinIcon(item.Status) }).bindPopup(popupContent);
-                        var btn = document.createElement('button');
-                        btn.className = 'zoom-btn';
-                        btn.innerHTML = `🍷 ${item.Name}`;
-                        btn.onclick = function() { map.flyTo([lat, lng], 6); marker.openPopup(); };
-                        allData.push({ marker: marker, button: btn, category: item.Category });
-                    }
-                });
-                filterAll();
-            }
-        });
-    </script>
-</body>
-</html>
+        var spreadsheetURL = '
