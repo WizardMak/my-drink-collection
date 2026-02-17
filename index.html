@@ -7,30 +7,45 @@
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: #001f3f; overflow: hidden; }
         
-        /* Sidebar Styling with Transition */
+        /* Sidebar Styling - Starts hidden (off-screen) */
         #sidebar {
-            width: 300px; height: 100vh; background: #fdfbf7;
-            border-right: 1px solid #d7ccc8; overflow-y: auto; padding: 20px; 
-            box-sizing: border-box; z-index: 1001;
-            transition: margin-left 0.4s ease;
+            position: absolute;
+            left: -320px; /* Hidden state */
+            top: 0;
+            width: 300px; 
+            height: 100vh; 
+            background: #fdfbf7;
+            border-right: 1px solid #d7ccc8; 
+            overflow-y: auto; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            z-index: 2000;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
         }
-        #sidebar.collapsed { margin-left: -300px; }
+        #sidebar.open { left: 0; }
         
-        #map { height: 100vh; flex-grow: 1; background: #001f3f; }
+        #map { height: 100vh; width: 100vw; background: #001f3f; }
         
-        /* Toggle Button */
+        /* Collection List Toggle Button */
         #toggle-btn {
-            position: absolute; top: 15px; left: 15px; z-index: 1002;
-            background: #5d4037; color: white; border: none; padding: 10px 15px;
-            border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            position: absolute; top: 15px; left: 15px; z-index: 2500;
+            background: #5d4037; color: white; border: none; padding: 12px 20px;
+            border-radius: 50px; cursor: pointer; font-weight: bold; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            transition: background 0.3s;
         }
+        #toggle-btn:hover { background: #3e2a24; }
 
         .header-container {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); padding: 10px 25px; border-radius: 50px;
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
+            background: rgba(255, 255, 255, 0.95); padding: 10px 30px; border-radius: 50px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center;
+            pointer-events: none; /* Allows clicking map through the header */
         }
+        .header-container * { pointer-events: auto; }
 
+        /* Tasting Card Styling */
         .tasting-card { padding: 10px; min-width: 220px; text-align: center; }
         .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; letter-spacing: 1px; }
         .tasting-card h4 { margin: 5px 0 10px 0; color: #8d6e63; font-weight: normal; border-bottom: 1px solid #d7ccc8; padding-bottom: 5px; }
@@ -46,22 +61,26 @@
             text-align: left; cursor: pointer; color: #5d4037; font-weight: bold; font-size: 13px;
         }
         .zoom-btn:hover { background: #efebe9; }
-        .stats { font-size: 14px; color: #8d6e63; margin-bottom: 20px; font-style: italic; }
+        .stats { font-size: 13px; color: #8d6e63; margin-bottom: 20px; line-height: 1.4; }
+
+        /* Move default Leaflet zoom buttons to the right */
+        .leaflet-right { right: 10px !important; }
+        .leaflet-left { display: none; } /* Hide default left zoom */
     </style>
 </head>
 <body>
 
-    <button id="toggle-btn" onclick="toggleSidebar()">☰ Menu</button>
+    <button id="toggle-btn" onclick="toggleSidebar()">☰ Collection List</button>
 
     <div id="sidebar">
-        <h2 style="color:#5d4037; margin-top: 40px;">⭐ My Collection</h2>
-        <div id="stats-display" class="stats">Loading collection...</div>
+        <h2 style="color:#5d4037; margin-top: 50px;">⭐ My Collection</h2>
+        <div id="stats-display" class="stats">Loading...</div>
         <div id="zoom-controls"></div>
     </div>
 
     <div class="header-container">
-        <h1 style="margin:0; font-size:18px;">🥃 My Love for Drinks 🍷</h1>
-        <select id="categoryFilter" onchange="filterMarkers()" style="margin-top:5px; padding:3px; border-radius:5px;">
+        <h1 style="margin:0; font-size:20px;">🥃 My Love for Drinks 🍷</h1>
+        <select id="categoryFilter" onchange="filterMarkers()" style="margin-top:8px; padding:5px; border-radius:5px; cursor: pointer;">
             <option value="All">All Categories</option>
             <option value="Whiskey">Whiskey</option>
             <option value="Gin">Gin</option>
@@ -74,18 +93,20 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-            // Give the map a moment to resize after sidebar slides
-            setTimeout(() => { map.invalidateSize(); }, 400);
+            document.getElementById('sidebar').classList.toggle('open');
         }
 
+        // Initialize map with zoom control on the right
         var map = L.map('map', { 
+            zoomControl: false, // We will add it manually to the right
             minZoom: 2,
-            zoomSnap: 0.5,
-            maxBounds: [[-90, -180], [90, 180]],
+            maxBounds: [[-85, -180], [85, 180]], // Tighter bounds to fit screen better
             maxBoundsViscosity: 1.0,
             worldCopyJump: false
-        }).setView([20, 0], 2.5); // Slightly higher zoom for a bigger initial feel
+        }).setView([20, 0], 2);
+
+        // Add zoom control to the right
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
         
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             noWrap: true,
@@ -93,7 +114,7 @@
             attribution: 'Tiles &copy; Esri'
         }).addTo(map);
 
-        var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
+        var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5 (Your full link here)';
         var allMarkers = [];
 
         function getPinIcon(status) {
@@ -152,11 +173,12 @@
                         btn.onclick = function() {
                             map.flyTo([lat, lng], 6);
                             marker.openPopup();
+                            if(window.innerWidth < 768) toggleSidebar(); // Auto-close on mobile
                         };
                         controls.appendChild(btn);
                     }
                 });
-                statsDisplay.innerHTML = `<b>${count}</b> drinks in your collection.`;
+                statsDisplay.innerHTML = `Exploring <b>${count}</b> unique flavors from around the globe.`;
             }
         });
     </script>
