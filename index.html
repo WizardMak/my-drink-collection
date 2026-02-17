@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Love for Drinks</title>
+    <title>The Global Pour</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -25,12 +25,21 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
 
+        /* Catchy Header inside Sidebar */
+        .sidebar-header { margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px; }
+        .sidebar-header h2 { color: #5d4037; margin: 0; font-size: 22px; }
+        
+        /* Category Filter inside Sidebar */
+        #categoryFilter { 
+            width: 100%; padding: 10px; margin-top: 15px; border-radius: 8px; 
+            border: 1px solid #d7ccc8; background: #fff; cursor: pointer; font-weight: 600; color: #5d4037;
+        }
+
         .header-container {
             position: absolute; top: 15px; left: 55%; transform: translateX(-50%); z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); padding: 10px 30px; border-radius: 50px;
+            background: rgba(255, 255, 255, 0.95); padding: 10px 40px; border-radius: 50px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; pointer-events: none;
         }
-        .header-container * { pointer-events: auto; }
 
         .tasting-card { padding: 10px; min-width: 220px; text-align: center; }
         .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; letter-spacing: 1px; }
@@ -53,59 +62,48 @@
     <button id="toggle-btn" onclick="toggleSidebar()">☰ MyCollectionList</button>
 
     <div id="sidebar">
-        <h2 style="color:#5d4037; margin-top: 50px;">⭐ My Collection</h2>
-        <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px;">Loading collection...</div>
+        <div class="sidebar-header">
+            <h2>🍾 My Collection</h2>
+            <select id="categoryFilter" onchange="filterAll()">
+                <option value="All">All Categories</option>
+                <option value="Whiskey">Whiskey</option>
+                <option value="Gin">Gin</option>
+                <option value="Rum">Rum</option>
+            </select>
+        </div>
+        <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px;">Loading...</div>
         <div id="zoom-controls"></div>
     </div>
 
     <div class="header-container">
-        <h1 style="margin:0; font-size:18px;">🥃 My Love for Drinks 🍷</h1>
-        <select id="categoryFilter" onchange="filterMarkers()" style="margin-top:8px; padding:5px; border-radius:5px;">
-            <option value="All">All Categories</option>
-            <option value="Whiskey">Whiskey</option>
-            <option value="Gin">Gin</option>
-            <option value="Rum">Rum</option>
-        </select>
+        <h1 style="margin:0; font-size:22px;">🌎 The Global Pour 🥃</h1>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Logic to toggle sidebar AND reset map on close
         function toggleSidebar() {
             var sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('open');
-            
-            // If we just closed the sidebar, fly back to the world view
             if (!sidebar.classList.contains('open')) {
                 map.flyTo([20, 0], 2);
-                map.closePopup(); // Close any open drink cards
+                map.closePopup();
             }
         }
 
         var map = L.map('map', { 
-            zoomControl: false,
-            minZoom: 2,
-            maxBounds: [[-85, -180], [85, 180]],
-            maxBoundsViscosity: 1.0
+            zoomControl: false, minZoom: 2,
+            maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0, worldCopyJump: false
         }).setView([20, 0], 2);
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            noWrap: true,
-            bounds: [[-90, -180], [90, 180]],
-            attribution: 'Esri'
+            noWrap: true, bounds: [[-90, -180], [90, 180]], attribution: 'Esri'
         }).addTo(map);
 
-        window.onload = function() {
-            setTimeout(function(){ map.invalidateSize(); }, 500);
-        };
-
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
-        
-        var allMarkers = [];
+        var allData = [];
 
         function getPinIcon(status) {
             var s = String(status || "").toLowerCase().trim();
@@ -117,59 +115,51 @@
             });
         }
 
-        function filterMarkers() {
+        // Logic to filter both Map and Sidebar simultaneously
+        function filterAll() {
             var selected = document.getElementById('categoryFilter').value;
-            allMarkers.forEach(function(m) {
-                if (selected === "All" || m.category === selected) { map.addLayer(m.marker); } 
-                else { map.removeLayer(m.marker); }
+            var controls = document.getElementById('zoom-controls');
+            controls.innerHTML = "";
+            var visibleCount = 0;
+
+            allData.forEach(function(item) {
+                if (selected === "All" || item.category === selected) {
+                    map.addLayer(item.marker);
+                    controls.appendChild(item.button);
+                    visibleCount++;
+                } else {
+                    map.removeLayer(item.marker);
+                }
             });
+            document.getElementById('stats-display').innerHTML = `Showing <b>${visibleCount}</b> ${selected === 'All' ? '' : selected} drinks.`;
         }
 
         Papa.parse(spreadsheetURL, {
-            download: true,
-            header: true,
+            download: true, header: true,
             complete: function(results) {
-                var controls = document.getElementById('zoom-controls');
-                var statsDisplay = document.getElementById('stats-display');
-                var count = 0;
-                controls.innerHTML = ""; 
-
                 results.data.forEach(function(item) {
                     var lat = parseFloat(item.Lat);
                     var lng = parseFloat(item.Long);
 
                     if(item.Name && !isNaN(lat) && !isNaN(lng)) {
-                        count++;
                         var jLat = lat + (Math.random() - 0.5) * 0.15;
                         var jLng = lng + (Math.random() - 0.5) * 0.15;
 
                         var statusText = String(item.Status || "").trim();
                         var statusClass = (statusText.toLowerCase().includes("bar") || statusText.toLowerCase() === "mybar") ? "in-my-bar" : "my-wishlist";
                         
-                        var popupContent = `
-                            <div class="tasting-card">
-                                <h2>${item.Name}</h2>
-                                <h4>${item.Country}</h4>
-                                <div class="status-badge ${statusClass}">${statusText}</div>
-                                <p>${item.Description}</p>
-                            </div>
-                        `;
-
+                        var popupContent = `<div class="tasting-card"><h2>${item.Name}</h2><h4>${item.Country}</h4><div class="status-badge ${statusClass}">${statusText}</div><p>${item.Description}</p></div>`;
                         var marker = L.marker([jLat, jLng], { icon: getPinIcon(item.Status) }).bindPopup(popupContent);
-                        marker.addTo(map);
-                        allMarkers.push({ marker: marker, category: item.Category });
-
+                        
                         var btn = document.createElement('button');
                         btn.className = 'zoom-btn';
                         btn.innerHTML = `🍷 ${item.Name}`;
-                        btn.onclick = function() {
-                            map.flyTo([lat, lng], 6);
-                            marker.openPopup();
-                        };
-                        controls.appendChild(btn);
+                        btn.onclick = function() { map.flyTo([lat, lng], 6); marker.openPopup(); };
+
+                        allData.push({ marker: marker, button: btn, category: item.Category });
                     }
                 });
-                statsDisplay.innerHTML = `Exploring <b>${count}</b> unique drinks.`;
+                filterAll(); // Run initial display
             }
         });
     </script>
