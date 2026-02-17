@@ -5,7 +5,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        /* Deep navy background for areas outside the map bounds */
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: #001f3f; }
         
         #sidebar {
@@ -21,25 +20,31 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center;
         }
 
+        /* Restored Tasting Card Design */
+        .tasting-card { padding: 10px; min-width: 220px; text-align: center; }
+        .tasting-card h2 { margin: 0; font-size: 18px; color: #5d4037; text-transform: uppercase; letter-spacing: 1px; }
+        .tasting-card h4 { margin: 5px 0 10px 0; color: #8d6e63; font-weight: normal; border-bottom: 1px solid #d7ccc8; padding-bottom: 5px; }
+        .tasting-card p { margin: 10px 0; font-size: 14px; line-height: 1.5; color: #333; text-align: left; }
+        
+        /* Status Badges */
+        .status-badge { font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; display: inline-block; margin-top: 5px; }
+        .in-my-bar { background: #2e7d32; color: white; }
+        .my-wishlist { background: #d32f2f; color: white; }
+
         .zoom-btn {
             display: block; width: 100%; padding: 10px; margin: 8px 0;
             background: #fff; border: 1px solid #d7ccc8; border-radius: 8px;
             text-align: left; cursor: pointer; color: #5d4037; font-weight: bold; font-size: 13px;
         }
         .zoom-btn:hover { background: #efebe9; }
-
-        .tasting-card { padding: 5px; min-width: 200px; text-align: center; }
-        .status-badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; text-transform: uppercase; }
-        
-        /* Updated UI colors for the tasting cards */
-        .in-my-bar { background: #2e7d32; color: white; }
-        .my-wishlist { background: #d32f2f; color: white; }
+        .stats { font-size: 14px; color: #8d6e63; margin-bottom: 20px; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <h2 style="color:#5d4037; font-size:18px;">⭐ My Collection</h2>
+        <h2 style="color:#5d4037; margin-bottom:5px;">⭐ My Collection</h2>
+        <div id="stats-display" class="stats">Loading collection...</div>
         <div id="zoom-controls"></div>
     </div>
 
@@ -73,14 +78,9 @@
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
         var allMarkers = [];
 
-        // Logic for GREEN (In My Bar) and RED (My Wishlist)
         function getPinIcon(status) {
             var s = String(status || "").toLowerCase().trim();
-            var color = "red"; // Default to red
-            
-            if (s.includes("bar")) {
-                color = "green";
-            }
+            var color = (s.includes("bar") || s === "mybar") ? "green" : "red";
             
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
@@ -105,25 +105,28 @@
             header: true,
             complete: function(results) {
                 var controls = document.getElementById('zoom-controls');
+                var statsDisplay = document.getElementById('stats-display');
+                var count = 0;
+
                 results.data.forEach(function(item) {
                     var lat = parseFloat(item.Lat);
                     var lng = parseFloat(item.Long);
 
                     if(item.Name && !isNaN(lat) && !isNaN(lng)) {
-                        
+                        count++;
                         var jLat = lat + (Math.random() - 0.5) * 0.15;
                         var jLng = lng + (Math.random() - 0.5) * 0.15;
 
-                        var statusValue = String(item.Status || "").trim();
-                        var statusClass = statusValue.toLowerCase().includes("bar") ? "in-my-bar" : "my-wishlist";
+                        var statusText = String(item.Status || "").trim();
+                        var statusClass = (statusText.toLowerCase().includes("bar") || statusText.toLowerCase() === "mybar") ? "in-my-bar" : "my-wishlist";
                         
+                        // Restored defined Card Structure
                         var popupContent = `
                             <div class="tasting-card">
-                                <h3>${item.Name}</h3>
-                                <p><strong>${item.Country}</strong></p>
-                                <p><span class="status-badge ${statusClass}">${statusValue}</span></p>
-                                <hr style="border:0; border-top:1px solid #eee;">
-                                <p style="font-size:13px; color:#666;">${item.Description}</p>
+                                <h2>${item.Name}</h2>
+                                <h4>${item.Country}</h4>
+                                <div class="status-badge ${statusClass}">${statusText}</div>
+                                <p>${item.Description}</p>
                             </div>
                         `;
 
@@ -143,6 +146,7 @@
                         controls.appendChild(btn);
                     }
                 });
+                statsDisplay.innerHTML = `You have <b>${count}</b> drinks in your global collection.`;
             }
         });
     </script>
