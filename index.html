@@ -52,20 +52,29 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        var map = L.map('map', { minZoom: 2 }).setView([20, 0], 2);
+        // FIX 1: MaxBounds and worldCopyJump: false prevents the "Data not available" repeat
+        var map = L.map('map', { 
+            minZoom: 2,
+            maxBounds: [[-90, -180], [90, 180]],
+            maxBoundsViscosity: 1.0,
+            worldCopyJump: false
+        }).setView([20, 0], 2);
         
-        // VIBRANT COLORED MAP
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            noWrap: true,
+            noWrap: true, // Stops the tiles from repeating horizontally
+            bounds: [[-90, -180], [90, 180]],
             attribution: 'Tiles &copy; Esri'
         }).addTo(map);
 
         var spreadsheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv';
         var allMarkers = [];
 
+        // FIX 2: Bulletproof Pin Color Logic
         function getPinIcon(status) {
             var s = String(status || "").toLowerCase().trim();
-            var color = (s === "in stock") ? "green" : "orange";
+            // This will catch "In Stock", "In stock", "in stock ", etc.
+            var color = (s.includes("in stock")) ? "green" : "orange";
+            
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -93,15 +102,14 @@
                     var lat = parseFloat(item.Lat);
                     var lng = parseFloat(item.Long);
 
-                    // Only process if we have valid coordinates and a name
                     if(item.Name && !isNaN(lat) && !isNaN(lng)) {
                         
-                        // Jitter to prevent overlapping
                         var jLat = lat + (Math.random() - 0.5) * 0.15;
                         var jLng = lng + (Math.random() - 0.5) * 0.15;
 
                         var statusText = String(item.Status || "Wishlist").trim();
-                        var statusClass = statusText.toLowerCase() === "in stock" ? "in-stock" : "wishlist";
+                        var isStock = statusText.toLowerCase().includes("in stock");
+                        var statusClass = isStock ? "in-stock" : "wishlist";
                         
                         var popupContent = `
                             <div class="tasting-card">
@@ -119,7 +127,6 @@
                         marker.addTo(map);
                         allMarkers.push({ marker: marker, category: item.Category });
 
-                        // Add Button to Sidebar
                         var btn = document.createElement('button');
                         btn.className = 'zoom-btn';
                         btn.innerHTML = `📍 ${item.Name}`;
