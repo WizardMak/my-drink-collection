@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My World Drink Collection</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; border-radius: 15px; }
+        body { font-family: sans-serif; background: #f4f1ea; padding: 20px; }
+        h1 { color: #5d4037; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h1>Globe Trotter's Bar 🥃</h1>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map focused on the center of the world
+        var map = L.map('map').setView([20, 0], 2);
+
+        // Add a nice "antique" style map layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // Data: This is where you add your drinks!
+        var drinks = [
+            { 
+                name: "Sake", 
+                country: "Japan", 
+                coords: [36.2, 138.2], 
+                desc: "A traditional rice wine. My favorite is the Junmai Daiginjo from Kyoto." 
+            },
+            { 
+                name: "Tequila", 
+                country: "Mexico", 
+                coords: [23.6, -102.5], 
+                desc: "100% Blue Agave. This bottle was brought back from Jalisco." 
+            }
+        ];
+
+        // Place pins on the map
+        drinks.forEach(function(item) {
+            L.marker(item.coords).addTo(map)
+                .bindPopup("<b>" + item.name + " (" + item.country + ")</b><br>" + item.desc);
+        });
+    </script>
+</body>
+</html>
