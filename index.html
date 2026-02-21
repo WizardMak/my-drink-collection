@@ -1,77 +1,129 @@
-Papa.parse('https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv', {
-    download: true, 
-    header: true,
-    complete: function(results) {
-        console.log("Data loaded:", results.data.length, "rows found."); // DEBUG LINE
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Global Pour | Collection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥃</text></svg>">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; background: #001f3f; overflow: hidden; }
+        #sidebar { position: absolute; left: -320px; top: 0; width: 300px; height: 100vh; background: #fdfbf7; border-right: 1px solid #d7ccc8; overflow-y: auto; padding: 20px; box-sizing: border-box; z-index: 4000; transition: left 0.4s ease; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+        #sidebar.open { left: 0; }
+        #map { height: 100vh; width: 100vw; background: #1a0f00; position: relative; z-index: 1; }
+        #toggle-btn { position: absolute; top: 15px; left: 15px; z-index: 5000; background: #5d4037; color: white; border: none; padding: 12px 20px; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+        #reset-filters-btn { width: 100%; padding: 8px; margin-bottom: 15px; background: #d7ccc8; color: #5d4037; border: none; border-radius: 5px; font-size: 11px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .header-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; text-align: center; cursor: pointer; }
+        .header-container h1 { margin: 0; font-size: 22px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,1); }
+        .sidebar-header { margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px; }
+        .filter-label { font-size: 11px; font-weight: bold; color: #8d6e63; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .custom-select { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #d7ccc8; background: #fff; color: #5d4037; font-weight: 600; }
+        .emoji-marker { background: white; border-radius: 50%; text-align: center; line-height: 28px; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.4); border: 3px solid #ccc; }
+        .border-in-bar { border-color: #2e7d32 !important; }
+        .border-not-in-bar { border-color: #d32f2f !important; }
+        .tasting-card { padding: 5px; min-width: 220px; text-align: center; }
+        .zoom-btn { display: block; width: 100%; padding: 12px; margin: 8px 0; background: #fff; border: 1px solid #d7ccc8; border-radius: 8px; text-align: left; cursor: pointer; font-size: 12px; font-weight: bold; border-left: 6px solid #ccc; }
+        .list-in-bar { border-left-color: #2e7d32 !important; }
+        .list-not-in-bar { border-left-color: #d32f2f !important; }
+    </style>
+</head>
+<body>
+    <button id="toggle-btn" onclick="toggleSidebar(event)">☰ MyCollectionList</button>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2 style="color: #5d4037;">🍾 My Collection</h2>
+            <button id="reset-filters-btn" onclick="resetFilters()">↺ Reset All Filters</button>
+            <span class="filter-label">Spirit Type</span>
+            <select id="categoryFilter" class="custom-select" onchange="filterAll()"><option value="All">All Drinks</option><option value="Whiskey">Whiskey</option><option value="Gin">Gin</option><option value="Rum">Rum</option><option value="Tequila">Tequila</option><option value="Vodka">Vodka</option><option value="Brandy">Brandy</option></select>
+            <span class="filter-label">Origin Country</span>
+            <select id="countryFilter" class="custom-select" onchange="filterAll()"><option value="All">All Countries</option></select>
+            <span class="filter-label">Availability</span>
+            <select id="statusFilter" class="custom-select" onchange="filterAll()"><option value="All">Show All Status</option><option value="In My Bar">In My Bar</option><option value="Not in My Bar">Not in My Bar</option></select>
+        </div>
+        <div id="stats-display" style="font-size:13px; color:#8d6e63; margin-bottom:20px;"></div>
+        <div id="zoom-controls"></div>
+    </div>
+    <div id="map"></div>
+    <div class="header-container" onclick="resetToHome()"><h1>🗺️ My Global Pour 🥃</h1></div>
 
-        results.data.forEach(function(item) {
-            // Validate coordinates exist
-            if(!item.Lat || !item.Long || !item.Name) return;
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const spiritData = {
+            "Vodka": "🍸", "Gin": "🌿", "Rum": "🏴‍☠️", "Tequila": "🌵", "Whiskey": "🥃", "Brandy": "🍇"
+        };
 
-            var rawLat = parseFloat(item.Lat);
-            var rawLong = parseFloat(item.Long);
+        var allData = [];
+        var countries = new Set();
+        var map = L.map('map', { zoomControl: false }).setView([22, 78], 2.8);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-            // INCREASED JITTER: 
-            // 0.002 is roughly 200 meters. This makes them visible even at lower zoom.
-            var jitterAmount = 0.002; 
-            var lat = rawLat + ((Math.random() - 0.5) * jitterAmount);
-            var lng = rawLong + ((Math.random() - 0.5) * jitterAmount);
+        function toggleSidebar(e) { e.stopPropagation(); document.getElementById('sidebar').classList.toggle('open'); }
+        function closeSidebarOnly() { document.getElementById('sidebar').classList.remove('open'); }
+        function resetFilters() { document.getElementById('categoryFilter').value="All"; document.getElementById('countryFilter').value="All"; document.getElementById('statusFilter').value="All"; filterAll(); }
+        function resetToHome() { closeSidebarOnly(); map.flyTo([22, 78], 2.8); }
 
-            var rawStatus = String(item.Status || "").trim().toLowerCase();
-            var isBar = (rawStatus.startsWith("in") || rawStatus === "mybar") && !rawStatus.includes("not");
-            var displayStatus = isBar ? "In My Bar" : "Not in My Bar";
-            
-            var catInfo = spiritData[item.Category] || { emoji: "🍷", text: "A premium selection." };
-            countries.add(item.Country);
+        function filterAll() {
+            var cat = document.getElementById('categoryFilter').value;
+            var cou = document.getElementById('countryFilter').value;
+            var sta = document.getElementById('statusFilter').value;
+            var ctrl = document.getElementById('zoom-controls');
+            ctrl.innerHTML = ""; var count = 0;
 
-            // Create Marker
-            var icon = L.divIcon({ 
-                className: `emoji-marker ${isBar ? 'border-in-bar' : 'border-not-in-bar'}`, 
-                html: catInfo.emoji, 
-                iconSize: [30, 30], 
-                iconAnchor: [15, 15], 
-                popupAnchor: [0, -10] 
+            allData.forEach(item => {
+                if ((cat === "All" || item.category === cat) && (cou === "All" || item.country === cou) && (sta === "All" || item.statusFull === sta)) {
+                    map.addLayer(item.marker); ctrl.appendChild(item.button); count++;
+                } else { map.removeLayer(item.marker); }
             });
+            document.getElementById('stats-display').innerHTML = `Showing <b>${count}</b> selections.`;
+        }
 
-            var popupHtml = `<div class="tasting-card">
-                <h2>${item.Name}</h2>
-                <div class="sub-header">${catInfo.emoji} ${item.Category}</div>
-                <div class="status-badge ${isBar ? 'in-my-bar' : 'not-in-bar'}">${displayStatus}</div>
-                <p>${item.Description || ''}</p>
-            </div>`;
-            
-            var marker = L.marker([lat, lng], { icon: icon }).bindPopup(popupHtml);
-            
-            function selectItem() {
-                map.flyTo([lat, lng], 8, { duration: 1.2 }); // Increased zoom level for precision
-                setTimeout(() => marker.openPopup(), 1300);
+        Papa.parse('https://docs.google.com/spreadsheets/d/e/2PACX-1vSJGK6JrWMMmQ_hsZ-jXvoeDRWZOw0qIghhR5-8gMdU4UfdTImEaO0ogvJw01S8i5QWebwITE9CKaMO/pub?output=csv', {
+            download: true, header: true, skipEmptyLines: true,
+            complete: function(results) {
+                if (results.data.length === 0) { console.error("No data found in CSV!"); return; }
+                
+                results.data.forEach(item => {
+                    // Check headers (Matches exactly your Lat/Long/Name/Category/Country/Status)
+                    if(!item.Lat || !item.Long) return;
+
+                    let lat = parseFloat(item.Lat) + (Math.random() - 0.5) * 0.005;
+                    let lng = parseFloat(item.Long) + (Math.random() - 0.5) * 0.005;
+                    
+                    let raw = String(item.Status || "").toLowerCase();
+                    let isBar = (raw.includes("in") && !raw.includes("not")) || raw.includes("mybar");
+                    let displayStatus = isBar ? "In My Bar" : "Not in My Bar";
+                    let emoji = spiritData[item.Category] || "🥃";
+
+                    countries.add(item.Country);
+
+                    let icon = L.divIcon({ 
+                        className: `emoji-marker ${isBar ? 'border-in-bar' : 'border-not-in-bar'}`, 
+                        html: emoji, iconSize: [30, 30], iconAnchor: [15, 15] 
+                    });
+
+                    let marker = L.marker([lat, lng], { icon: icon }).bindPopup(`
+                        <div class="tasting-card">
+                            <h3>${item.Name}</h3>
+                            <p>${emoji} ${item.Category} | ${item.Country}</p>
+                            <p><b>${displayStatus}</b></p>
+                        </div>
+                    `);
+
+                    let btn = document.createElement('button');
+                    btn.className = `zoom-btn ${isBar ? 'list-in-bar' : 'list-not-in-bar'}`;
+                    btn.innerHTML = `${item.Name} <br><small>${item.Category} • ${item.Country}</small>`;
+                    btn.onclick = () => { closeSidebarOnly(); map.flyTo([lat, lng], 8); setTimeout(() => marker.openPopup(), 1000); };
+
+                    allData.push({ marker, button: btn, category: item.Category, country: item.Country, statusFull: displayStatus });
+                });
+
+                let cDrop = document.getElementById('countryFilter');
+                Array.from(countries).sort().forEach(c => {
+                    let o = document.createElement('option'); o.value = c; o.innerHTML = c; cDrop.appendChild(o);
+                });
+                filterAll();
             }
-
-            marker.on('click', selectItem);
-            
-            var btn = document.createElement('button');
-            btn.className = `zoom-btn ${isBar ? 'list-in-bar' : 'list-not-in-bar'}`;
-            btn.innerHTML = `${item.Name} <span class="btn-sub">${item.Country}</span>`;
-            btn.onclick = (e) => { e.stopPropagation(); closeSidebarOnly(); selectItem(); };
-
-            allData.push({ 
-                marker: marker, 
-                button: btn, 
-                category: item.Category, 
-                country: item.Country, 
-                name: item.Name, 
-                statusFull: displayStatus 
-            });
         });
-
-        // Populate Country Dropdown
-        var cDrop = document.getElementById('countryFilter');
-        Array.from(countries).sort().forEach(c => { 
-            var o = document.createElement('option'); 
-            o.value = c; o.innerHTML = c; 
-            cDrop.appendChild(o); 
-        });
-
-        filterAll();
-    }
-});
+    </script>
+</body>
+</html>
