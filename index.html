@@ -12,16 +12,19 @@
         #sidebar { position: absolute; left: -320px; top: 0; width: 300px; height: 100vh; background: #fdfbf7; border-right: 1px solid #d7ccc8; overflow-y: auto; padding: 20px; box-sizing: border-box; z-index: 4000; transition: left 0.4s ease; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
         #sidebar.open { left: 0; }
         
-        /* MAP GLOW & TONE */
-        #map { height: 100vh; width: 100vw; background: #1a0f00; position: relative; z-index: 1; }
-        .leaflet-tile-container {
-            filter: sepia(100%) hue-rotate(335deg) brightness(75%) contrast(120%);
-        }
-        /* Subtle vignette to make the center glow */
-        #map::after {
-            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 2000;
-            background: radial-gradient(circle, rgba(255,165,0,0.05) 0%, rgba(0,0,0,0.4) 100%);
+        #map { height: 100vh; width: 100vw; background: #f0f0f0; position: relative; z-index: 1; }
+
+        /* DESKTOP ONLY: Amber Lounge Glow */
+        @media (min-width: 601px) {
+            #map { background: #1a0f00; }
+            .leaflet-tile-container {
+                filter: sepia(100%) hue-rotate(335deg) brightness(75%) contrast(120%);
+            }
+            #map::after {
+                content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                pointer-events: none; z-index: 2000;
+                background: radial-gradient(circle, rgba(255,165,0,0.05) 0%, rgba(0,0,0,0.4) 100%);
+            }
         }
 
         #toggle-btn { position: absolute; top: 15px; left: 15px; z-index: 5000; background: #5d4037; color: white; border: none; padding: 12px 20px; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
@@ -29,20 +32,21 @@
 
         .header-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; text-align: center; white-space: nowrap; transition: opacity 0.4s ease; cursor: pointer; pointer-events: auto; }
         #map:has(.leaflet-popup) ~ .header-container { opacity: 0; pointer-events: none; }
-        .header-container h1 { margin: 0; font-size: 22px; color: white; text-shadow: 0px 0px 15px rgba(255,165,0,0.6), 2px 2px 4px rgba(0,0,0,1); }
-        @media (max-width: 600px) { .header-container { top: 65px; left: 20px; transform: none; text-align: left; } .header-container h1 { font-size: 18px; } }
+        .header-container h1 { margin: 0; font-size: 22px; color: white; text-shadow: 0px 0px 15px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,1); }
+        
+        @media (max-width: 600px) { 
+            .header-container { top: 65px; left: 20px; transform: none; text-align: left; } 
+            .header-container h1 { font-size: 18px; color: #5d4037; text-shadow: none; }
+        }
         
         .sidebar-header { margin-top: 50px; border-bottom: 2px solid #d7ccc8; padding-bottom: 15px; margin-bottom: 20px; }
         .filter-label { font-size: 11px; font-weight: bold; color: #8d6e63; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .custom-select { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #d7ccc8; background: #fff; cursor: pointer; color: #5d4037; font-weight: 600; }
         
-        /* MARKER GLOW */
-        .emoji-marker { 
-            background: white; border-radius: 50%; text-align: center; line-height: 28px; font-size: 18px; 
-            box-shadow: 0 0 10px rgba(255,255,255,0.5), 0 2px 5px rgba(0,0,0,0.4); border: 3px solid #ccc; 
-        }
-        .border-in-bar { border-color: #2e7d32 !important; box-shadow: 0 0 12px rgba(46,125,50,0.4); }
-        .border-not-in-bar { border-color: #d32f2f !important; box-shadow: 0 0 12px rgba(211,47,47,0.4); }
+        .emoji-marker { background: white; border-radius: 50%; text-align: center; line-height: 28px; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.4); border: 3px solid #ccc; transition: transform 0.2s; }
+        .emoji-marker:hover { transform: scale(1.2); z-index: 1000 !important; }
+        .border-in-bar { border-color: #2e7d32 !important; }
+        .border-not-in-bar { border-color: #d32f2f !important; }
         
         .tasting-card { padding: 5px; min-width: 220px; text-align: center; }
         .tasting-card h2 { margin: 0; font-size: 19px; color: #5d4037; text-transform: uppercase; font-weight: 800; }
@@ -97,10 +101,11 @@
         var map = L.map('map', { zoomControl: false, minZoom: 1, worldCopyJump: true }).setView(initialCenter, initialZoom);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { 
-            noWrap: false, 
-            attribution: 'Esri' 
-        }).addTo(map);
+        var tileUrl = window.innerWidth < 600 
+            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}' 
+            : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+
+        L.tileLayer(tileUrl, { noWrap: false, attribution: 'Esri' }).addTo(map);
 
         function resetToHome() { closeSidebarOnly(); map.closePopup(); map.flyTo(initialCenter, initialZoom, { duration: 1.5 }); }
         function toggleSidebar(e) { if(e) e.stopPropagation(); var sidebar = document.getElementById('sidebar'); sidebar.classList.toggle('open'); if (!sidebar.classList.contains('open')) { resetToHome(); } }
@@ -114,7 +119,6 @@
             var ctrl = document.getElementById('zoom-controls');
             ctrl.innerHTML = ""; var count = 0;
             
-            // SORTING LOGIC: Alphabetical by Country then Name
             allData.sort((a, b) => {
                 if (a.country < b.country) return -1;
                 if (a.country > b.country) return 1;
@@ -136,7 +140,13 @@
             complete: function(results) {
                 results.data.forEach(function(item) {
                     if(!item.Lat || !item.Long || !item.Name) return;
-                    var lat = parseFloat(item.Lat), lng = parseFloat(item.Long);
+
+                    // --- JITTER LOGIC ---
+                    // Adds a tiny random offset so overlapping markers become visible
+                    var jitter = () => (Math.random() - 0.5) * 0.0006; 
+                    var lat = parseFloat(item.Lat) + jitter();
+                    var lng = parseFloat(item.Long) + jitter();
+
                     var raw = String(item.Status || "").trim().toLowerCase();
                     var isBar = (raw.startsWith("in") || raw === "mybar") && !raw.includes("not");
                     var displayStatus = isBar ? "In My Bar" : "Not in My Bar";
